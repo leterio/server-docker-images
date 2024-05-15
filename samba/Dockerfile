@@ -26,7 +26,6 @@ RUN file=/etc/samba/smb.conf && \
     echo "    server min protocol = SMB2_10"     >> $file && \
     echo "    map to guest = bad user"           >> $file && \
     echo "    strict locking = no"               >> $file && \
-    echo "    security = user"                   >> $file && \
     echo "    workgroup = WORKGROUP"             >> $file && \
     echo "    follow symlinks = yes"             >> $file && \
     echo ""                                      >> $file
