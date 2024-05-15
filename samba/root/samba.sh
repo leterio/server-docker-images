@@ -280,20 +280,20 @@ done
 shift $(( OPTIND - 1 ))
 
 while read i; do
-    eval user $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< $i)
-done < <(env | awk '/^USER[0-9=_]/ {sub (/^[^=]*=/, "", $0); print}')
+    eval user $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<<${i#*=})
+done < <(env | grep '^USER[0-9=_]*=' | sort -t 'R' -k2,2n)
 
 while read i; do
-    eval group $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< $i)
-done < <(env | awk '/^GROUP[0-9=_]/ {sub (/^[^=]*=/, "", $0); print}')
+    eval group $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< ${i#*=})
+done < <(env | grep '^GROUP[0-9=_]*=' | sort -t 'P' -k2,2n)
 
 while read i; do
-    eval share $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< $i)
-done < <(env | awk '/^SHARE[0-9=_]/ {sub (/^[^=]*=/, "", $0); print}')
+    eval share $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< ${i#*=})
+done < <(env | grep '^SHARE[0-9=_]*=' | sort -t 'E' -k2,2n)
 
 while read i; do
-    eval option $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< $i)
-done < <(env | awk '/^OPTION[0-9=_]/ {sub (/^[^=]*=/, "", $0); print}')
+    eval option $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< ${i#*=})
+done < <(env | grep '^OPTION[0-9=_]*=' | sort -t 'N' -k2,2n)
 
 [[ "${WORKGROUP:-""}" ]] && workgroup "$WORKGROUP"
 
