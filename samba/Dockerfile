@@ -7,7 +7,7 @@ LABEL maintainer="Vinícius Letério <viniciusleterio@gmail.com>"
 
 # Install samba
 RUN apk --no-cache --no-progress upgrade && \
-    apk --no-cache --no-progress add bash shadow tini tzdata ${ALPINE_PACKAGE}${ALPINE_PACKAGE_VER:+=${ALPINE_PACKAGE_VER}} && \
+    apk --no-cache --no-progress add bash shadow tini tzdata acl ${ALPINE_PACKAGE}${ALPINE_PACKAGE_VER:+=${ALPINE_PACKAGE_VER}} && \
     mkdir /shares && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
