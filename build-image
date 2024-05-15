@@ -2,7 +2,9 @@
 
 # Author: Vinícius Letério <viniciusleterio@gmail.com>
 # Objective: Wrapper for building docker images (Using buildx);
-# Version:   3.0
+# Version:   3.1
+
+set -o nounset
 
 command -v log-trace 2>/dev/null >/dev/null || function log-trace() { [[ ${LOG_TRACE:-0} -eq 1 ]] && echo -e "${0##/}: \033[36m$@\033[0m" || true; }
 command -v log-info 2>/dev/null >/dev/null || function log-info() { echo -e "${0##/}: $@"; }
@@ -11,7 +13,6 @@ command -v log-warn 2>/dev/null >/dev/null || function log-warn() { echo -e "${0
 command -v log-error 2>/dev/null >/dev/null || function log-error() { echo -e "${0##/}: \033[31m$@\033[0m"; }
 
 DEFAULT_PLATFORMS="linux/amd64,linux/arm64,linux/arm/v7"
-LOG_TRACE="${LOG_TRACE:-0}"
 
 # Usage info
 function usage() {
@@ -37,6 +38,7 @@ function usage() {
     log-info "| -p                                   | IMAGE_PUSH         | Push image to Docker Hub."
     log-info "|                                      |                    |   NOTE: Require at least one tag to be pushed."
     log-info "| -l                                   | IMAGE_LOAD         | Load image to Docker."
+    log-info "| -x                                   | BUILDX_NAME        | Alternative Docker BuildX instance name."
     log-info "|                                      | LOG_TRACE          | Enables verbose mode."
     log-info ""
     log-info "NOTES:"
@@ -52,34 +54,37 @@ function usage() {
 function handleEnvironmentVariables() {
     log-trace "Initializing local variables based on environment variables ..."
 
-    [[ "$BUILD_TEST_MODE" == "1" ]] && test="true"
+    [[ "${BUILD_TEST_MODE:-0}" == "1" ]] && test="true"
     log-trace "test=${test}"
-    [[ "$BUILD_USERNAME" ]] && username="$BUILD_USERNAME"
+    [[ "${BUILD_USERNAME:-""}" ]] && username="$BUILD_USERNAME"
     log-trace "username=${username}"
-    [[ "$BUILD_ARGUMENTS" ]] && arguments="$BUILD_ARGUMENTS"
+    [[ "${BUILD_ARGUMENTS:-""}" ]] && arguments="$BUILD_ARGUMENTS"
     log-trace "arguments=${arguments}"
 
-    [[ "$TAG_CUSTOMS" ]] && tags+="${tags:+,}$TAG_CUSTOMS"
+    [[ "${TAG_CUSTOMS:-""}" ]] && tags+="${tags:+,}$TAG_CUSTOMS"
     log-trace "tags=${tags}"
-    [[ "$TAG_LATEST" == "1" ]] && tags+="${tags:+,}latest"
+    [[ "${TAG_LATEST:-0}" == "1" ]] && tags+="${tags:+,}latest"
     log-trace "tags=${tags}"
-    [[ "$TAG_CURR_DATE" == "1" ]] && tags+="${tags:+,}$(date +%Y-%m-%d)"
+    [[ "${TAG_CURR_DATE:-0}" == "1" ]] && tags+="${tags:+,}$(date +%Y-%m-%d)"
     log-trace "tags=${tags}"
 
-    [[ "$TARGET_PLATFORMS" ]] && platforms="$TARGET_PLATFORMS"
+    [[ "${TARGET_PLATFORMS:-""}" ]] && platforms="$TARGET_PLATFORMS"
     log-trace "platforms=${platforms}"
 
-    [[ "$IMAGE_PUSH" == "1" ]] && push="true"
+    [[ "${IMAGE_PUSH:-0}" == "1" ]] && push="true"
     log-trace "push=${push}"
-    [[ "$IMAGE_LOAD" == "1" ]] && load="true"
+    [[ "${IMAGE_LOAD:-0}" == "1" ]] && load="true"
     log-trace "load=${load}"
+
+    [[ "${BUILDX_NAME:-""}" ]] && buildx_name="$BUILDX_NAME"
+    log-trace "buildx_name=${buildx_name}"
 }
 
 # Handle command line arguments
 # The return code contains the index of last processed argument
 function handleArguments() {
     log-trace "Handling command arguments ($# args) ..."
-    while getopts ":hdu:a:t:LTP:pl" OPTION; do
+    while getopts ":hdu:a:t:LTP:plx:" OPTION; do
         log-trace "Handling argument: $OPTION"
         case "$OPTION" in
         h)
@@ -120,6 +125,10 @@ function handleArguments() {
         l)
             load="true"
             log-trace "load=${load}"
+            ;;
+        x)
+            buildx_name="$OPTARG"
+            log-trace "buildx_name=${buildx_name}"
             ;;
         "?")
             log-error "Unknown option: -$OPTARG"
@@ -194,6 +203,7 @@ function variablesSanityCheck() {
 # Calls the docker buildx build
 function runDockerBuild() {
     local command="docker buildx build \
+        ${buildx_name:+--builder $buildx_name} \
         --platform $platforms \
         ${tags:+$(sed "s/^/--tag ${username:+$username\/}${projectAlias}:/g;s/\,/ --tag ${username:+$username\/}${projectAlias}:/g" <<<$tags)} \
         ${arguments:+$(sed "s/^/--build-arg /g;s/\,/ --build-arg /g" <<<$arguments)} \
@@ -224,6 +234,7 @@ tags=
 platforms=
 push=
 load=
+buildx_name=
 
 [[ -x .env ]] && source .env
 
@@ -242,5 +253,6 @@ log-trace "tags=$tags"
 log-trace "platforms=$platforms"
 log-trace "push=$push"
 log-trace "load=$load"
+log-trace "buildx_name=$buildx_name"
 
 runDockerBuild
