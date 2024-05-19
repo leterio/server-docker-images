@@ -164,22 +164,17 @@ share() {
 # Arguments:
 #   section) section of config file
 #   option) raw option
-#   multiple) if the option key can be repeated
 # Return: line added to smb.conf (replaces existing line with same key)
 option() {
     local section="$1" \
           key="$(sed 's| *=.*||' <<< $2)" \
           value="$(sed 's|[^=]*= *||' <<< $2)" \
-          multiple="${3:-no}"
           file=/etc/samba/smb.conf
     log "Setting key \"$key\" on section \"$section\""
-    if ! grep -e "^\[$section\]" "$file" 2>/dev/null >/dev/null; then
-        echo -e "[$section]\n" >> "$file"
-    fi
-    if [[ "$multiple" == "no" ]] && sed -n '/^\['"$section"'\]/,/^\[/p' $file | grep -qE '^;*\s*'"$key"; then
-        sed -i '/^\['"$section"'\]/,/^\[/s|^;*\s*\('"$key"' = \).*|    \1'"$value"'|' "$file"
+    if sed -n '/^\['"$section"'\]/,/^\[/p' $file | grep -qE '^;*\s*'"$key"; then
+        sed -i '/^\['"$1"'\]/,/^\[/s|^;*\s*\('"$key"' = \).*|    \1'"$value"'|' "$file"
     else
-        sed -i '/^\['"$section"'\]/,/^\[/{/^\[/!h};${x;/^\['"$section"'\]/!{x;s/.*//;x};x;${x;s/.*/    '"$key = $value"'/;G;h}}' "$file"
+        sed -i '/\['"$section"'\]/a \    '"$key = $value" "$file"
     fi
 }
 
@@ -252,12 +247,10 @@ SHARE[0-9]*   -s \"<sharename;/path>[;browseable;readonly;createmask;directoryma
                       NOTE: for user lists below, usernames are separated by ','
                       [users] allowed default:unset or list of allowed users
                       [comment] default: unset or description of share
-OPTION[0-9]*  -O \"<section;parameter>[;multiple]\"
-                      Provide an option for smb.conf
+OPTION[0-9]*  -O \"<section;parameter>\"
+                      Provide a option for smb.conf
                       required arg: \"<section>\" - IE: \"share\"
                       required arg: \"<parameter>\" - IE: \"log level = 2\"
-                      optional arg: \"[multiple]\" - IE \"yes\"
-                         Allow option to be setted multiple times (Ex: vfs objects)
 WORKGROUP     -w \"<workgroup>\"
                       Configure the workgroup (domain) samba should use
                       required arg: \"<workgroup>\" for samba
